@@ -1,0 +1,253 @@
+package org.example;
+
+import sac.graph.GraphState;
+import sac.graph.GraphStateImpl;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class SlidePullzle extends GraphStateImpl {
+    protected int voidField;
+    protected byte[][] board;
+    protected int row, col;
+    protected static int n;
+
+    public SlidePullzle(int n) {
+        SlidePullzle.n = (byte) n;
+        board = new byte[n][n];
+        IntStream.range(0, n * n - 1).forEach(count -> {
+            int i = count / n;
+            int j = count % n;
+            board[i][j] = (byte) (count + 1);
+        });
+        board[n-1][n-1] = 0;
+        voidField = n * n - 1;
+        row = voidField / n;
+        col = voidField % n;
+    }
+
+    public SlidePullzle(SlidePullzle sp) {
+        board = Arrays.stream(sp.board)
+                .map(byte[]::clone)
+                .toArray(byte[][]::new);
+        this.voidField = sp.voidField;
+        this.row = sp.row;
+        this.col = sp.col;
+    }
+
+    private GraphStateImpl move(int rowOffset, int colOffset, String simvol) {
+        int newRow = row + rowOffset;
+        int newCol = col + colOffset;
+        boolean isOutOfBoard = newRow < 0 || newRow >= n || newCol < 0 || newCol >= n;
+        if (isOutOfBoard) { return this; }
+        SlidePullzle thisCopy = new SlidePullzle(this);
+        thisCopy.board[row][col] = thisCopy.board[newRow][newCol];
+        thisCopy.board[newRow][newCol] = 0;
+        thisCopy.row = newRow;
+        thisCopy.col = newCol;
+        thisCopy.voidField += rowOffset * n + colOffset;
+        thisCopy.setMoveName(simvol);
+        return thisCopy;
+    }
+
+    public GraphStateImpl moveDown() {
+        return move(1, 0, "↓");
+    }
+
+    public GraphStateImpl moveUp() {
+        return move(-1, 0, "↑");
+    }
+
+    public GraphStateImpl moveLeft() {
+        return move(0, -1, "←");
+    }
+
+    public GraphStateImpl moveRight() {
+        return move(0, 1, "→");
+    }
+
+    public static void expand(int d, GraphState s) {
+        System.out.println(d <= 0 ? s : "");
+        s.generateChildren().stream()
+                .filter(t -> s != t)
+                .forEach(t -> expand(d - 1, t));
+    }
+
+    public void shuffler(int movesCount) {
+        Random random = new Random();
+        for (int i = 0; i < movesCount; i++) {
+            List<GraphState> moves = generateChildren();
+            int position = random.nextInt(moves.size());
+            SlidePullzle nextMove = (SlidePullzle) moves.get(position);
+            this.board = nextMove.board;
+            this.row = nextMove.row;
+            this.col = nextMove.col;
+            this.voidField = nextMove.voidField;
+        }
+    }
+
+    @Override
+    public String toString() {
+        final int cellSize = 5;
+        final String borderLine = "@".repeat(n * cellSize + 1) + "\n";
+        String boardString = IntStream.range(0, n)
+                .mapToObj(i -> IntStream.range(0, n)
+                        .mapToObj(j -> String.format("@%1$3d ", board[i][j]))
+                        .collect(Collectors.joining("")) + "@\n")
+                .collect(Collectors.joining(borderLine, borderLine, borderLine));
+        return boardString;
+    }
+
+    @Override
+    public List<GraphState> generateChildren() {
+        List<GraphState> children = new ArrayList<>();
+        addIfNotNull(children, moveDown());
+        addIfNotNull(children, moveUp());
+        addIfNotNull(children, moveRight());
+        addIfNotNull(children, moveLeft());
+        return children;
+    }
+
+    private void addIfNotNull(List<GraphState> list, GraphState state) {
+        if (state != null) list.add(state);
+    }
+
+    @Override
+    public boolean isSolution() {
+        return java.util.stream.IntStream.range(0, n * n)
+                .allMatch(count -> {
+                    int row = count / n;
+                    int col = count % n;
+                    boolean isCorrectValue = board[row][col] == count;
+                    return isCorrectValue;
+                });
+    }
+}
+
+
+package org.example;
+
+import sac.graph.*;
+
+import java.util.Map;
+import java.util.function.Supplier;
+
+public class Main {
+//    public static void main(String[] args) {
+//        System.out.println("It started");
+//        long t1 = System.currentTimeMillis();
+//        SlidePullzle puzzle = new SlidePullzle(3);
+//        AStar aStar = new AStar(puzzle);
+//        for (int i = 0; i < 100; i++) {
+//            puzzle.shuffler(1000);
+//            aStar.setInitial(new SlidePullzle(puzzle));
+//            SlidePullzle.setHFunction(new HeuristicaManhattan());
+//            aStar.execute();
+//            SlidePullzle.setHFunction(new HeuristicaMT());
+//            aStar.execute();
+//        }
+//        long t2 = System.currentTimeMillis();
+//        System.out.println("Experiment total time [s]: " + (0.001 * (t2 - t1)));
+//        System.out.println("It ended");
+//    }
+
+//    public static void main(String[] args) {
+//        System.out.println("It started");
+//        long t1 = System.currentTimeMillis();
+//        SlidePullzle puzzle = new SlidePullzle(3);
+//        AStar aStar = new AStar(puzzle);
+//        BestFirstSearch bfs = new BestFirstSearch(puzzle);
+//        for (int i = 0; i < 100; i++) {
+//            puzzle.shuffler(1000);
+//            aStar.execute();
+//            bfs.execute();
+//        }
+//        long t2 = System.currentTimeMillis();
+//        System.out.println("Experiment total time [s]: " + (0.001 * (t2 - t1)));
+//        System.out.println("It ended");
+//    }
+
+    public static void main(String[] args) {
+        SlidePullzle slidingPuzzle = new SlidePullzle(3);
+        HeuristicaManhattan heuristicaManhattan = new HeuristicaManhattan();
+        HeuristicaMT heuristicaMT = new HeuristicaMT();
+        //slidingPuzzle.setHFunction(heuristicaManhattan);
+        slidingPuzzle.setHFunction(heuristicaMT);
+        slidingPuzzle.shuffler(1000);
+        System.out.println("SLIDING PUZZLE TO SOLVE:\n" + slidingPuzzle);
+        GraphSearchAlgorithm algorithm = new AStar(slidingPuzzle);
+        algorithm.execute();
+        SlidePullzle solution = (SlidePullzle) algorithm.getSolutions().get(0);
+        printSolutionDetails(solution, algorithm);
+    }
+
+    private static void printSolutionDetails(GraphState solution, GraphSearchAlgorithm algorithm) {
+        Map<String, Supplier<String>> messages = Map.of(
+                "SOLUTION", () -> "SOLUTION:\n" + solution,
+                "PATH LENGTH", () -> "PATH LENGTH: " + solution.getPath().size(),
+                "MOVES ALONG PATH", () -> "MOVES ALONG PATH: " + solution.getMovesAlongPath(),
+                "CLOSED STATES", () -> "CLOSED STATES: " + algorithm.getClosedStatesCount(),
+                "OPEN STATES", () -> "OPEN STATES: " + algorithm.getOpenSet().size(),
+                "DURATION TIME", () -> "DURATION TIME: " + algorithm.getDurationTime() + " ms"
+        );
+        messages.forEach((key, messageSupplier) -> System.out.println(messageSupplier.get()));
+    }
+
+}
+package org.example;
+
+import sac.State;
+import sac.StateFunction;
+
+public class HeuristicaMT extends StateFunction {
+    public int getMTValue(SlidePullzle puzzle) {
+        int n = SlidePullzle.n;
+        int misplacedTiles = 0;
+        for (int count = 0; count < n * n; count++) {
+            int row = count / n;
+            int col = count % n;
+            misplacedTiles += (puzzle.board[row][col] != count && puzzle.board[row][col] != 0) ? 1 : 0;
+        }
+        return misplacedTiles;
+    }
+
+
+    @Override
+    public double calculate(State state) {
+        return (state instanceof SlidePullzle) ? getMTValue((SlidePullzle) state) : Double.NaN;
+    }
+}
+
+
+package org.example;
+import sac.State;
+import sac.StateFunction;
+import java.util.stream.IntStream;
+
+public class HeuristicaManhattan extends StateFunction {
+    public int getManhattanValue(SlidePullzle puzzle) {
+        int n = SlidePullzle.n;
+        return IntStream.range(0, n * n)
+                .map(count -> {
+                    int row = count / n;
+                    int col = count % n;
+                    int value = puzzle.board[row][col];
+                    if (value == 0) return 0;
+                    int targetRow = value / n;
+                    int targetCol = value % n;
+                    int diffBetweenRowAndTargetRow = row - targetRow;
+                    int diffBetweenColAndTargetCol = col - targetCol;
+                    return Math.abs(diffBetweenRowAndTargetRow) + Math.abs(diffBetweenColAndTargetCol);
+                })
+                .sum();
+    }
+
+    @Override
+    public double calculate(State state) {
+        return (state instanceof SlidePullzle) ? getManhattanValue((SlidePullzle) state) : Double.NaN;
+    }
+}

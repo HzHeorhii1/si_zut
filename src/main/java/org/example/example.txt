@@ -1,8 +1,53 @@
 package org.example;
+import sac.State;
+import sac.StateFunction;
+public class HeuristicaMT extends StateFunction {
+    public int getMTValue(SlidePullzle puzzle) {
+        int n = SlidePullzle.n;
+        int misplacedTiles = 0;
+        for (int count = 0; count < n * n; count++) {
+            int row = count / n;
+            int col = count % n;
+            misplacedTiles += (puzzle.board[row][col] != count && puzzle.board[row][col] != 0) ? 1 : 0;
+        }
+        return misplacedTiles;
+    }
 
+    @Override
+    public double calculate(State state) {
+        return (state instanceof SlidePullzle) ? getMTValue((SlidePullzle) state) : Double.NaN;
+    }
+}
+
+package org.example;
+import sac.State;
+import sac.StateFunction;
+import java.util.stream.IntStream;
+public class HeuristicaManhattan extends StateFunction {
+    public int getManhattanValue(SlidePullzle puzzle) {
+        int n = SlidePullzle.n;
+        return IntStream.range(0, n * n)
+                .map(count -> {
+                    int row = count / n;
+                    int col = count % n;
+                    int value = puzzle.board[row][col];
+                    if (value == 0) return 0;
+                    int targetRow = value / n;
+                    int targetCol = value % n;
+                    int diffBetweenRowAndTargetRow = row - targetRow;
+                    int diffBetweenColAndTargetCol = col - targetCol;
+                    return Math.abs(diffBetweenRowAndTargetRow) + Math.abs(diffBetweenColAndTargetCol);
+                }).sum();
+    }
+    @Override
+    public double calculate(State state) {
+        return (state instanceof SlidePullzle) ? getManhattanValue((SlidePullzle) state) : Double.NaN;
+    }
+}
+
+package org.example;
 import sac.graph.GraphState;
 import sac.graph.GraphStateImpl;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -11,10 +56,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class SlidePullzle extends GraphStateImpl {
-    protected int voidField;
-    protected byte[][] board;
     protected int row, col;
     protected static int n;
+    protected int voidField;
+    protected byte[][] board;
 
     public SlidePullzle(int n) {
         SlidePullzle.n = (byte) n;
@@ -54,12 +99,9 @@ public class SlidePullzle extends GraphStateImpl {
         return thisCopy;
     }
 
-    public GraphStateImpl moveDown() {
-        return move(1, 0, "↓");
-    }
-
-    public GraphStateImpl moveUp() {
-        return move(-1, 0, "↑");
+    @Override
+    public int hashCode() {
+        return Arrays.deepHashCode(board);
     }
 
     public GraphStateImpl moveLeft() {
@@ -70,11 +112,31 @@ public class SlidePullzle extends GraphStateImpl {
         return move(0, 1, "→");
     }
 
+    public GraphStateImpl moveDown() {
+        return move(1, 0, "↓");
+    }
+
+    public GraphStateImpl moveUp() {
+        return move(-1, 0, "↑");
+    }
+
     public static void expand(int d, GraphState s) {
         System.out.println(d <= 0 ? s : "");
         s.generateChildren().stream()
                 .filter(t -> s != t)
                 .forEach(t -> expand(d - 1, t));
+    }
+
+    @Override
+    public String toString() {
+        final int cellSize = 5;
+        final String borderLine = "@".repeat(n * cellSize + 1) + "\n";
+        String boardString = IntStream.range(0, n)
+                .mapToObj(i -> IntStream.range(0, n)
+                        .mapToObj(j -> String.format("@%1$3d ", board[i][j]))
+                        .collect(Collectors.joining("")) + "@\n")
+                .collect(Collectors.joining(borderLine, borderLine, borderLine));
+        return boardString;
     }
 
     public void shuffler(int movesCount) {
@@ -88,18 +150,6 @@ public class SlidePullzle extends GraphStateImpl {
             this.col = nextMove.col;
             this.voidField = nextMove.voidField;
         }
-    }
-
-    @Override
-    public String toString() {
-        final int cellSize = 5;
-        final String borderLine = "@".repeat(n * cellSize + 1) + "\n";
-        String boardString = IntStream.range(0, n)
-                .mapToObj(i -> IntStream.range(0, n)
-                        .mapToObj(j -> String.format("@%1$3d ", board[i][j]))
-                        .collect(Collectors.joining("")) + "@\n")
-                .collect(Collectors.joining(borderLine, borderLine, borderLine));
-        return boardString;
     }
 
     @Override
@@ -127,127 +177,57 @@ public class SlidePullzle extends GraphStateImpl {
                 });
     }
 }
-
-
 package org.example;
-
 import sac.graph.*;
-
 import java.util.Map;
 import java.util.function.Supplier;
 
 public class Main {
-//    public static void main(String[] args) {
-//        System.out.println("It started");
-//        long t1 = System.currentTimeMillis();
-//        SlidePullzle puzzle = new SlidePullzle(3);
-//        AStar aStar = new AStar(puzzle);
-//        for (int i = 0; i < 100; i++) {
-//            puzzle.shuffler(1000);
-//            aStar.setInitial(new SlidePullzle(puzzle));
-//            SlidePullzle.setHFunction(new HeuristicaManhattan());
-//            aStar.execute();
-//            SlidePullzle.setHFunction(new HeuristicaMT());
-//            aStar.execute();
-//        }
-//        long t2 = System.currentTimeMillis();
-//        System.out.println("Experiment total time [s]: " + (0.001 * (t2 - t1)));
-//        System.out.println("It ended");
-//    }
-
-//    public static void main(String[] args) {
-//        System.out.println("It started");
-//        long t1 = System.currentTimeMillis();
-//        SlidePullzle puzzle = new SlidePullzle(3);
-//        AStar aStar = new AStar(puzzle);
-//        BestFirstSearch bfs = new BestFirstSearch(puzzle);
-//        for (int i = 0; i < 100; i++) {
-//            puzzle.shuffler(1000);
-//            aStar.execute();
-//            bfs.execute();
-//        }
-//        long t2 = System.currentTimeMillis();
-//        System.out.println("Experiment total time [s]: " + (0.001 * (t2 - t1)));
-//        System.out.println("It ended");
-//    }
-
     public static void main(String[] args) {
-        SlidePullzle slidingPuzzle = new SlidePullzle(3);
-        HeuristicaManhattan heuristicaManhattan = new HeuristicaManhattan();
-        HeuristicaMT heuristicaMT = new HeuristicaMT();
-        //slidingPuzzle.setHFunction(heuristicaManhattan);
-        slidingPuzzle.setHFunction(heuristicaMT);
-        slidingPuzzle.shuffler(1000);
-        System.out.println("SLIDING PUZZLE TO SOLVE:\n" + slidingPuzzle);
-        GraphSearchAlgorithm algorithm = new AStar(slidingPuzzle);
-        algorithm.execute();
-        SlidePullzle solution = (SlidePullzle) algorithm.getSolutions().get(0);
-        printSolutionDetails(solution, algorithm);
-    }
-
-    private static void printSolutionDetails(GraphState solution, GraphSearchAlgorithm algorithm) {
-        Map<String, Supplier<String>> messages = Map.of(
-                "SOLUTION", () -> "SOLUTION:\n" + solution,
-                "PATH LENGTH", () -> "PATH LENGTH: " + solution.getPath().size(),
-                "MOVES ALONG PATH", () -> "MOVES ALONG PATH: " + solution.getMovesAlongPath(),
-                "CLOSED STATES", () -> "CLOSED STATES: " + algorithm.getClosedStatesCount(),
-                "OPEN STATES", () -> "OPEN STATES: " + algorithm.getOpenSet().size(),
-                "DURATION TIME", () -> "DURATION TIME: " + algorithm.getDurationTime() + " ms"
-        );
-        messages.forEach((key, messageSupplier) -> System.out.println(messageSupplier.get()));
-    }
-
-}
-package org.example;
-
-import sac.State;
-import sac.StateFunction;
-
-public class HeuristicaMT extends StateFunction {
-    public int getMTValue(SlidePullzle puzzle) {
-        int n = SlidePullzle.n;
-        int misplacedTiles = 0;
-        for (int count = 0; count < n * n; count++) {
-            int row = count / n;
-            int col = count % n;
-            misplacedTiles += (puzzle.board[row][col] != count && puzzle.board[row][col] != 0) ? 1 : 0;
+        long durationManhattan = 0;
+        long totalOpenManhattan = 0;
+        long totalOpenMT = 0;
+        long totalVlosedManhattan = 0;
+        long totalVlosedMT = 0;
+        long durationMT = 0;
+        for (int experiment = 1; experiment <= 100; experiment++) {
+            System.out.println("Experiment " + experiment);
+            SlidePullzle slidingPuzzle = new SlidePullzle(3);
+            HeuristicaManhattan heuristicaManhattan = new HeuristicaManhattan();
+            HeuristicaMT heuristicaMT = new HeuristicaMT();
+            slidingPuzzle.shuffler(100);
+            // HeuristicaManhattan
+            slidingPuzzle.setHFunction(heuristicaManhattan);
+            GraphSearchAlgorithm algorithmManhattan = new AStar(slidingPuzzle);
+            long startManhattan = System.nanoTime();
+            algorithmManhattan.execute();
+            long endManhattan = System.nanoTime();
+            long diff1 = endManhattan - startManhattan;
+            durationManhattan += diff1 / 1_000_000;
+            System.out.println("HeuristicaManhattan time: " + diff1 / 1_000_000 + " ms");
+            totalOpenManhattan += algorithmManhattan.getClosedStatesCount();
+            totalVlosedManhattan += algorithmManhattan.getOpenSet().size();
+            System.out.println("closed states: " + algorithmManhattan.getClosedStatesCount());
+            System.out.println("open states: " + algorithmManhattan.getOpenSet().size());
+            // HeuristicaMT
+            slidingPuzzle.setHFunction(heuristicaMT);
+            GraphSearchAlgorithm algorithmMT = new AStar(slidingPuzzle);
+            long startMT = System.nanoTime();
+            algorithmMT.execute();
+            long endMT = System.nanoTime();
+            long diff2 = endMT - startMT;
+            durationMT += diff2 / 1_000_000;
+            System.out.println("HeuristicaMT time: " + diff2 / 1_000_000 + " ms");
+            totalOpenMT += algorithmMT.getClosedStatesCount();
+            totalVlosedMT += algorithmMT.getOpenSet().size();
+            System.out.println("closed states: " + algorithmMT.getClosedStatesCount());
+            System.out.println("open states: " + algorithmMT.getOpenSet().size());
         }
-        return misplacedTiles;
-    }
-
-
-    @Override
-    public double calculate(State state) {
-        return (state instanceof SlidePullzle) ? getMTValue((SlidePullzle) state) : Double.NaN;
-    }
-}
-
-
-package org.example;
-import sac.State;
-import sac.StateFunction;
-import java.util.stream.IntStream;
-
-public class HeuristicaManhattan extends StateFunction {
-    public int getManhattanValue(SlidePullzle puzzle) {
-        int n = SlidePullzle.n;
-        return IntStream.range(0, n * n)
-                .map(count -> {
-                    int row = count / n;
-                    int col = count % n;
-                    int value = puzzle.board[row][col];
-                    if (value == 0) return 0;
-                    int targetRow = value / n;
-                    int targetCol = value % n;
-                    int diffBetweenRowAndTargetRow = row - targetRow;
-                    int diffBetweenColAndTargetCol = col - targetCol;
-                    return Math.abs(diffBetweenRowAndTargetRow) + Math.abs(diffBetweenColAndTargetCol);
-                })
-                .sum();
-    }
-
-    @Override
-    public double calculate(State state) {
-        return (state instanceof SlidePullzle) ? getManhattanValue((SlidePullzle) state) : Double.NaN;
+        System.out.println("Total open for HeuristicaManhattan: " + totalOpenManhattan);
+        System.out.println("Total open for HeuristicaMT: " + totalOpenMT);
+        System.out.println("Total closed for HeuristicaManhattan: " + totalVlosedManhattan);
+        System.out.println("Total closed for HeuristicaMT: " + totalVlosedMT);
+        System.out.println("Total time for HeuristicaManhattan: " + durationManhattan + " ms");
+        System.out.println("Total time for HeuristicaMT: " + durationMT + " ms");
     }
 }

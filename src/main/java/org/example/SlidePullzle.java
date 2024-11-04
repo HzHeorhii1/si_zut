@@ -52,6 +52,11 @@ public class SlidePullzle extends GraphStateImpl {
         return thisCopy;
     }
 
+    @Override
+    public int hashCode() {
+        return Arrays.deepHashCode(board);
+    }
+
     public GraphStateImpl moveLeft() {
         return move(0, -1, "←");
     }
@@ -75,6 +80,18 @@ public class SlidePullzle extends GraphStateImpl {
                 .forEach(t -> expand(d - 1, t));
     }
 
+    @Override
+    public String toString() {
+        final int cellSize = 5;
+        final String borderLine = "@".repeat(n * cellSize + 1) + "\n";
+        String boardString = IntStream.range(0, n)
+                .mapToObj(i -> IntStream.range(0, n)
+                        .mapToObj(j -> String.format("@%1$3d ", board[i][j]))
+                        .collect(Collectors.joining("")) + "@\n")
+                .collect(Collectors.joining(borderLine, borderLine, borderLine));
+        return boardString;
+    }
+
     public void shuffler(int movesCount) {
         Random random = new Random();
         for (int i = 0; i < movesCount; i++) {
@@ -86,18 +103,6 @@ public class SlidePullzle extends GraphStateImpl {
             this.col = nextMove.col;
             this.voidField = nextMove.voidField;
         }
-    }
-
-    @Override
-    public String toString() {
-        final int cellSize = 5;
-        final String borderLine = "@".repeat(n * cellSize + 1) + "\n";
-        String boardString = IntStream.range(0, n)
-                .mapToObj(i -> IntStream.range(0, n)
-                        .mapToObj(j -> String.format("@%1$3d ", board[i][j]))
-                        .collect(Collectors.joining("")) + "@\n")
-                .collect(Collectors.joining(borderLine, borderLine, borderLine));
-        return boardString;
     }
 
     @Override
@@ -124,6 +129,4 @@ public class SlidePullzle extends GraphStateImpl {
                     return isCorrectValue;
                 });
     }
-
-
 }
